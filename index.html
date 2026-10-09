@@ -1,0 +1,479 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CallFlow — Smart Contact Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --purple:#6757e8;
+  --ink:#222443;
+  --muted:#898da9;
+  --line:#ececf5;
+  --bg:#f6f7fc;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:Inter,"Segoe UI",Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+[hidden]{display:none!important}
+#login{min-height:100vh;display:grid;place-items:center;padding:22px;
+  background:radial-gradient(ellipse at top left,#dedaff,transparent 55%),
+  #f7f7fc}
+.login-card{background:white;padding:35px;border-radius:24px;
+  width:min(410px,100%);box-shadow:0 20px 70px #30277c14}
+.brand{font-size:23px;font-weight:850;letter-spacing:-1px}
+.logo{display:inline-grid;place-items:center;background:var(--purple);
+  color:white;border-radius:12px;width:42px;height:42px;margin-right:8px}
+.sub{color:var(--muted);font-size:13px;line-height:1.6}
+.field{display:block;margin-top:17px}
+.field span{display:block;font-size:12px;font-weight:700;margin-bottom:8px}
+input,select,textarea{width:100%;padding:12px 13px;border:1px solid #e2e3ef;
+  border-radius:10px;outline-color:var(--purple);background:white;color:var(--ink)}
+.btn{border:0;border-radius:10px;padding:12px 15px;font-size:13px;font-weight:750}
+.primary{background:var(--purple);color:white;box-shadow:0 5px 15px #6757e82a}
+.secondary{background:#f0efff;color:var(--purple)}
+.danger{background:#fff0f0;color:#cf4141}
+.full{width:100%;margin-top:20px}
+.app{display:flex;min-height:100vh}
+.sidebar{width:235px;background:white;border-right:1px solid var(--line);
+  padding:26px 17px;flex-shrink:0}
+.brandline{display:flex;align-items:center;margin:0 8px 38px}
+.nav-title{font-size:10px;color:#a4a6bd;letter-spacing:1.6px;
+  font-weight:800;margin:25px 12px 12px}
+.nav{padding:13px 14px;border-radius:11px;color:#777b98;
+  font-size:13px;margin:5px 0}
+.nav.active{background:#f0efff;color:var(--purple);font-weight:800}
+.tip{margin-top:55px;padding:16px;border-radius:15px;
+  background:linear-gradient(145deg,#f1efff,#faf9ff);
+  font-size:12px;line-height:1.7;color:#747596}
+.main{padding:30px;min-width:0;flex:1;max-width:1600px;margin:auto;width:100%}
+.top{display:flex;align-items:center;justify-content:space-between;
+  gap:15px;margin-bottom:27px}
+.kicker{color:var(--purple);font-size:10px;font-weight:850;letter-spacing:2px}
+h1{font-size:clamp(25px,3vw,33px);letter-spacing:-1.3px;margin:8px 0}
+.sub{margin-top:5px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;
+  margin-bottom:24px}
+.stat{background:white;border:1px solid var(--line);border-radius:17px;padding:19px}
+.stat-label{display:flex;align-items:center;justify-content:space-between;
+  gap:8px;color:#777b98;font-size:12px}
+.stat-icon{display:grid;place-items:center;width:35px;height:35px;
+  background:#f0efff;color:var(--purple);border-radius:11px;font-size:17px}
+.num{font-size:31px;font-weight:850;letter-spacing:-1px;margin-top:13px}
+.mini{color:#9b9db2;font-size:11px;margin-top:5px}
+.panel{background:white;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.panel-head{padding:22px 23px;display:flex;justify-content:space-between;
+  align-items:center;gap:12px;flex-wrap:wrap}
+.panel-title{font-size:17px;font-weight:800}
+.toolbar{padding:0 23px 19px;display:flex;gap:10px;flex-wrap:wrap}
+.search{flex:1;min-width:180px}
+.control{width:auto;font-size:12px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;text-align:left}
+thead{background:#fafaff}
+th{font-size:10px;letter-spacing:1px;color:#9b9db2;font-weight:800}
+th,td{padding:15px 19px;border-bottom:1px solid #f0f0f7}
+td{font-size:12px}
+tr:last-child td{border-bottom:0}
+.contact{display:flex;align-items:center;gap:11px;min-width:180px}
+.avatar{width:39px;height:39px;display:grid;place-items:center;
+  flex-shrink:0;border-radius:13px;background:#eeedff;color:#6150d9;font-weight:800}
+.name{font-weight:750;font-size:13px}
+.phone{color:#999bb0;font-size:11px;margin-top:5px}
+.pill{display:inline-flex;align-items:center;gap:7px;border-radius:25px;
+  padding:7px 10px;font-size:11px;font-weight:750;white-space:nowrap}
+.pill input{width:15px;height:15px;margin:0;accent-color:#15965a}
+.done{background:#eaf9f0;color:#17834c}
+.pending{background:#f0f1f7;color:#71758e}
+.follow{background:#fff4e4;color:#ad7014}
+.note{color:#72758f;line-height:1.6;min-width:160px;max-width:260px;
+  white-space:normal}
+.actions{display:flex;gap:6px}
+.smallbtn{border:1px solid #e8e8f2;background:white;border-radius:8px;
+  padding:8px 10px;color:#6f7290;font-size:11px}
+.smallbtn:hover{background:#f0efff;color:var(--purple)}
+.empty{text-align:center;padding:40px;color:#9396ad}
+.foot{padding:17px 22px;border-top:1px solid var(--line);
+  color:#9b9db0;font-size:11px;display:flex;justify-content:space-between;gap:8px}
+dialog{border:0;border-radius:20px;width:min(460px,calc(100% - 24px));
+  padding:26px;box-shadow:0 25px 90px #24234b30}
+dialog::backdrop{background:#1d1b3a70;backdrop-filter:blur(3px)}
+.dialog-title{font-size:22px;font-weight:850}
+.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:23px}
+#message{font-size:12px;color:#cf4141;margin-top:12px;line-height:1.5}
+#toast{position:fixed;right:20px;bottom:20px;background:#222443;color:white;
+  padding:13px 18px;border-radius:12px;font-size:13px;z-index:5;
+  box-shadow:0 10px 30px #22244330}
+@media(max-width:1000px){.sidebar{width:190px}.main{padding:22px 17px}
+.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.sidebar{display:none}.main{padding:17px 11px}
+.top{align-items:flex-start}.stats{gap:9px}.stat{padding:14px}
+.num{font-size:26px}.panel-head{padding:18px}.toolbar{padding:0 15px 16px}
+.search{min-width:100%}.top .btn{padding:11px}}
+</style>
+</head>
+<body>
+
+<section id="login">
+  <div class="login-card">
+    <div class="brand"><span class="logo">☎</span>CallFlow</div>
+    <h1 id="authTitle" style="font-size:27px;margin-top:30px">Welcome back</h1>
+    <p class="sub">Sign in to access your private contact tracker.</p>
+    <form id="authForm">
+      <label class="field"><span>Email address</span>
+        <input id="email" type="email" required placeholder="you@example.com">
+      </label>
+      <label class="field"><span>Password</span>
+        <input id="password" type="password" required minlength="6"
+          placeholder="At least 6 characters">
+      </label>
+      <button class="btn primary full" id="authBtn">Sign in securely</button>
+    </form>
+    <button id="switchAuth" class="btn secondary full">
+      Create a new account
+    </button>
+    <p id="message"></p>
+    <p class="sub">Configure your Supabase credentials in this HTML file first.</p>
+  </div>
+</section>
+
+<div id="app" class="app" hidden>
+  <aside class="sidebar">
+    <div class="brandline"><span class="logo">☎</span><span class="brand">CallFlow</span></div>
+    <div class="nav-title">WORKSPACE</div>
+    <div class="nav">▦ &nbsp; Overview</div>
+    <div class="nav active">☷ &nbsp; Call follow-ups</div>
+    <div class="nav">◷ &nbsp; Follow-up list</div>
+    <div class="nav-title">ACCOUNT</div>
+    <div class="nav">⚙ &nbsp; My workspace</div>
+    <div class="tip"><b>Stay on track ✨</b><br>
+      Every call matters. Keep your notes updated and your next steps clear.</div>
+    <button class="btn secondary full" id="logoutBtn">Sign out</button>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div>
+        <div class="kicker">YOUR CONTACT WORKSPACE</div>
+        <h1>Call follow-ups</h1>
+        <div class="sub">Turn every conversation into meaningful progress.</div>
+      </div>
+      <button class="btn primary" id="addBtn">＋ Add contact</button>
+    </header>
+
+    <section class="stats">
+      <div class="stat"><div class="stat-label">Total contacts <span class="stat-icon">♙</span></div>
+        <div class="num" id="total">0</div><div class="mini">All saved records</div></div>
+      <div class="stat"><div class="stat-label">Completed <span class="stat-icon">✓</span></div>
+        <div class="num" id="completed">0</div><div class="mini">Calls completed</div></div>
+      <div class="stat"><div class="stat-label">Pending <span class="stat-icon">◷</span></div>
+        <div class="num" id="pending">0</div><div class="mini">Still to contact</div></div>
+      <div class="stat"><div class="stat-label">Follow-up <span class="stat-icon">↻</span></div>
+        <div class="num" id="follow">0</div><div class="mini">Call again later</div></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><div class="panel-title">Your contacts</div>
+          <div class="sub">A clear view of every call and next step.</div></div>
+        <button class="btn secondary" id="refreshBtn">↻ Refresh</button>
+      </div>
+      <div class="toolbar">
+        <input class="search" id="search" placeholder="⌕  Search name, number or note...">
+        <select id="filter" class="control">
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="done">Completed</option>
+          <option value="follow">Follow-up</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>CONTACT</th><th>STATUS</th><th>COMMENTS</th><th>ACTIONS</th></tr></thead>
+          <tbody id="list"><tr><td class="empty" colspan="4">Loading your contacts…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="foot"><span id="count">0 contacts</span><span>Cloud-synced workspace</span></div>
+    </section>
+  </main>
+</div>
+
+<dialog id="editor">
+  <form id="contactForm">
+    <div class="dialog-title" id="editorTitle">Add contact</div>
+    <p class="sub">Contact details are saved securely to your cloud database.</p>
+    <label class="field"><span>Full name *</span>
+      <input id="name" required maxlength="100" placeholder="Contact name"></label>
+    <label class="field"><span>Phone number *</span>
+      <input id="phone" required maxlength="30" placeholder="01XXXXXXXXX"></label>
+    <label class="field"><span>Call status</span>
+      <select id="status"><option value="pending">Pending</option>
+        <option value="done">Completed</option>
+        <option value="follow">Follow-up needed</option></select></label>
+    <label class="field"><span>Comment / additional status</span>
+      <textarea id="comment" rows="3" maxlength="2000"
+        placeholder="No answer, call again tomorrow..."></textarea></label>
+    <div id="formError" class="sub"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn secondary" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn primary" id="saveBtn">Save contact</button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" hidden></div>
+
+<script>
+/*
+  SETUP:
+  1. Replace these two values with your Supabase project URL and publishable/anon key.
+  2. Never put a service_role key in browser code.
+*/
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
+
+const configured =
+  SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_URL.includes("YOUR_SUPABASE");
+
+const $ = id => document.getElementById(id);
+let db = null, user = null, records = [], editingId = null, signup = false;
+const labels = {
+  pending: ["Pending", "pending"],
+  done: ["Completed", "done"],
+  follow: ["Follow-up", "follow"]
+};
+
+function toast(text) {
+  $("toast").textContent = text;
+  $("toast").hidden = false;
+  setTimeout(() => $("toast").hidden = true, 2800);
+}
+function errorText(err) {
+  return err?.message || "Something went wrong. Please try again.";
+}
+function setMessage(text) { $("message").textContent = text; }
+
+function showApp(isLoggedIn) {
+  $("login").hidden = isLoggedIn;
+  $("app").hidden = !isLoggedIn;
+}
+
+function initials(name) {
+  return name.trim().split(/\s+/).slice(0,2)
+    .map(x => x[0] || "").join("").toUpperCase();
+}
+
+function node(tag, text, cls) {
+  const e = document.createElement(tag);
+  e.textContent = text ?? "";
+  if (cls) e.className = cls;
+  return e;
+}
+
+async function loadContacts() {
+  $("list").replaceChildren(node("tr", ""));
+  const loading = node("td", "Loading contacts…", "empty");
+  loading.colSpan = 4;
+  $("list").firstChild.appendChild(loading);
+
+  const {data, error} = await db.from("contacts")
+    .select("id,name,phone,status,comment,created_at")
+    .order("created_at", {ascending:false});
+
+  if (error) {
+    $("list").replaceChildren();
+    const tr = node("tr", "");
+    const td = node("td", "Could not load records: " + error.message, "empty");
+    td.colSpan = 4; tr.appendChild(td); $("list").appendChild(tr);
+    return;
+  }
+  records = data || [];
+  render();
+}
+
+function render() {
+  $("total").textContent = records.length;
+  $("completed").textContent = records.filter(x => x.status === "done").length;
+  $("pending").textContent = records.filter(x => x.status === "pending").length;
+  $("follow").textContent = records.filter(x => x.status === "follow").length;
+
+  const q = $("search").value.toLowerCase().trim();
+  const f = $("filter").value;
+  const filtered = records.filter(c =>
+    [c.name,c.phone,c.comment].some(v => (v || "").toLowerCase().includes(q)) &&
+    (f === "all" || c.status === f)
+  );
+  const tbody = $("list");
+  tbody.replaceChildren();
+
+  if (!filtered.length) {
+    const tr = node("tr", "");
+    const td = node("td", records.length ?
+      "No matching contacts. Try another search." :
+      "Your list is empty. Add your first contact to get started.", "empty");
+    td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr);
+  }
+
+  filtered.forEach(c => {
+    const tr = node("tr", "");
+    const tdContact = node("td", "");
+    const contact = node("div", "", "contact");
+    contact.appendChild(node("div", initials(c.name), "avatar"));
+    const details = node("div", "");
+    details.appendChild(node("div", c.name, "name"));
+    details.appendChild(node("div", c.phone, "phone"));
+    contact.appendChild(details); tdContact.appendChild(contact);
+    tr.appendChild(tdContact);
+
+    const tdStatus = node("td", "");
+    const pill = node("label", "", "pill " + (labels[c.status] || labels.pending)[1]);
+    const check = document.createElement("input");
+    check.type = "checkbox"; check.checked = c.status === "done";
+    check.setAttribute("aria-label", "Mark call completed");
+    check.addEventListener("change", async () => {
+      await updateContact(c.id, {status:check.checked ? "done" : "pending"});
+    });
+    pill.append(check, document.createTextNode((labels[c.status] || labels.pending)[0]));
+    tdStatus.appendChild(pill); tr.appendChild(tdStatus);
+
+    tr.appendChild(node("td", c.comment || "No comment added", "note"));
+
+    const tdActions = node("td", "");
+    const actions = node("div", "", "actions");
+    const edit = node("button", "Edit", "smallbtn");
+    edit.type = "button"; edit.onclick = () => openEditor(c);
+    const del = node("button", "Delete", "smallbtn");
+    del.type = "button"; del.onclick = () => deleteContact(c);
+    actions.append(edit, del); tdActions.appendChild(actions);
+    tr.appendChild(tdActions); tbody.appendChild(tr);
+  });
+
+  $("count").textContent = `${filtered.length} shown · ${records.length} total`;
+}
+
+async function updateContact(id, changes) {
+  const {error} = await db.from("contacts").update(changes).eq("id",id);
+  if (error) { toast("Update failed: " + error.message); return; }
+  await loadContacts();
+  toast("Contact updated");
+}
+
+async function deleteContact(c) {
+  if (!confirm(`Delete ${c.name} from your list?`)) return;
+  const {error} = await db.from("contacts").delete().eq("id",c.id);
+  if (error) { toast("Delete failed: " + error.message); return; }
+  await loadContacts(); toast("Contact deleted");
+}
+
+function openEditor(c = null) {
+  editingId = c?.id || null;
+  $("contactForm").reset();
+  $("formError").textContent = "";
+  $("editorTitle").textContent = c ? "Edit contact" : "Add contact";
+  $("saveBtn").textContent = c ? "Save changes" : "Save contact";
+  if (c) {
+    $("name").value = c.name;
+    $("phone").value = c.phone;
+    $("status").value = c.status;
+    $("comment").value = c.comment || "";
+  }
+  $("editor").showModal();
+}
+
+$("addBtn").onclick = () => openEditor();
+$("cancelBtn").onclick = () => $("editor").close();
+$("search").addEventListener("input", render);
+$("filter").addEventListener("change", render);
+$("refreshBtn").onclick = loadContacts;
+
+$("contactForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const record = {
+    name:$("name").value.trim(),
+    phone:$("phone").value.trim(),
+    status:$("status").value,
+    comment:$("comment").value.trim()
+  };
+  if (!record.name || !record.phone) return;
+  $("saveBtn").disabled = true;
+  $("formError").textContent = "";
+
+  let result;
+  if (editingId) {
+    result = await db.from("contacts").update(record).eq("id",editingId);
+  } else {
+    result = await db.from("contacts").insert({...record,user_id:user.id});
+  }
+  $("saveBtn").disabled = false;
+
+  if (result.error) {
+    $("formError").textContent = errorText(result.error);
+    return;
+  }
+  $("editor").close();
+  await loadContacts();
+  toast(editingId ? "Changes saved" : "Contact added successfully");
+  editingId = null;
+});
+
+$("authForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!db) return setMessage("Please configure Supabase URL and key in index.html.");
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  $("authBtn").disabled = true; setMessage("");
+
+  const result = signup
+    ? await db.auth.signUp({email,password})
+    : await db.auth.signInWithPassword({email,password});
+
+  $("authBtn").disabled = false;
+  if (result.error) { setMessage(errorText(result.error)); return; }
+
+  if (signup && !result.data.session) {
+    setMessage("Account created. Check your email to confirm, then sign in.");
+    return;
+  }
+  user = result.data.user;
+  if (user) { showApp(true); await loadContacts(); }
+});
+
+$("switchAuth").onclick = () => {
+  signup = !signup;
+  $("authTitle").textContent = signup ? "Create your account" : "Welcome back";
+  $("authBtn").textContent = signup ? "Create account" : "Sign in securely";
+  $("switchAuth").textContent = signup ? "Back to sign in" : "Create a new account";
+  setMessage("");
+};
+
+$("logoutBtn").onclick = async () => {
+  await db.auth.signOut();
+  user = null; records = []; showApp(false); toast("Signed out");
+};
+
+async function start() {
+  if (!configured) {
+    setMessage("Setup needed: replace SUPABASE_URL and SUPABASE_KEY in the script with your project's URL and publishable key.");
+    return;
+  }
+  db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  const {data} = await db.auth.getSession();
+  user = data.session?.user || null;
+  showApp(!!user);
+  if (user) await loadContacts();
+
+  db.auth.onAuthStateChange((_event,session) => {
+    user = session?.user || null;
+    showApp(!!user);
+    if (user) setTimeout(loadContacts,0);
+  });
+}
+start();
+</script>
+</body>
+</html>
